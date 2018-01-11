@@ -18,6 +18,9 @@ package com.mongodb.connection;
 
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
+import com.mongodb.diagnostics.logging.Logger;
+import com.mongodb.diagnostics.logging.Loggers;
+import com.mongodb.internal.HexUtils;
 import com.mongodb.internal.authentication.NativeAuthenticationHelper;
 
 import javax.crypto.Mac;
@@ -39,6 +42,7 @@ import static com.mongodb.AuthenticationMechanism.SCRAM_SHA_1;
 
 class ScramSha1Authenticator extends SaslAuthenticator {
 
+    private static final Logger LOGGER = Loggers.getLogger("auth");
     private final RandomStringGenerator randomStringGenerator;
 
     ScramSha1Authenticator(final MongoCredential credential) {
@@ -89,15 +93,23 @@ class ScramSha1Authenticator extends SaslAuthenticator {
         }
 
         public byte[] evaluateChallenge(final byte[] challenge) throws SaslException {
+            LOGGER.warn("Received challenge: " + HexUtils.toHex(challenge));
+
+            byte[] firstMessage;
+            byte[] finalMessage;
             if (this.step == 0) {
                 this.step++;
 
-                return computeClientFirstMessage();
+                firstMessage = computeClientFirstMessage();
+                LOGGER.warn("First message: " + HexUtils.toHex(firstMessage));
+                return firstMessage;
             }
             else if (this.step == 1) {
                 this.step++;
 
-                return computeClientFinalMessage(challenge);
+                finalMessage = computeClientFinalMessage(challenge);
+                LOGGER.warn("Final message: " + HexUtils.toHex(finalMessage));
+                return finalMessage;
             }
             else if (this.step == 2) {
                 this.step++;
